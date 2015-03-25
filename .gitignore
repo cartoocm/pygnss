@@ -55,3 +55,6 @@ target/
 
 # large test data files
 data/
+
+# scratch work
+scratch/
