@@ -2,6 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
+from gnss.codes import Code
 
 
 class L1CodePhaseAssignment(namedtuple('L1CodePhaseAssignment', 'svid prn ca_phase_select x2_phase_select ca_code_delay p_code_delay first_10_chips_ca first_12_chips_p')):
@@ -84,3 +85,28 @@ def gold_code(feedback_taps, output_taps):
         shift_register[1:] = shift_register[:-1]
         shift_register[0] = first
     return code
+
+
+CODE_RATE = 1.023e6
+NAV_RATE = 50
+
+def gps_l1ca(svid):
+    """Generates GPS L1 CA PRN code for given SV id.
+    
+    Parameters
+    ----------
+    sv_id : int
+        the id of the satellite for which the 
+
+    Returns
+    -------
+    output : ndarray of shape(1023,)
+        the complete code sequence
+
+    Notes
+    -----
+    """
+    ps = L1_CODE_PHASE_ASSIGNMENTS[svid].ca_phase_select
+    g1 = gold_code([2, 9], [9])
+    g2 = gold_code([1, 2, 5, 7, 8, 9], [ps[0] - 1, ps[1] - 1])
+    return Code((g1 + g2) % 2, CODE_RATE)

@@ -67,8 +67,7 @@ def shift_state(state):
     and the polynomial followed by a right shift. The MSb comes from the last bit of the current state.
     """
     poly = 153692793
-    next_state = ((state ^ poly) >> 1)
-    next_state = next_state |= (1 << 27) if (state & 1) else next_state
+    next_state = ((state ^ poly) >> 1) | ((state & 1) << 27)
     return next_state
 
 def x_code(initial_state, polynomial):

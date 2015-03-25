@@ -1,12 +1,13 @@
 
 
-import numpy as np
 from collections import namedtuple
+from numpy import zeros
+from gnss.codes import Code
 
 
 class L2CodePhaseAssignment(namedtuple('L2CodePhaseAssignment', 'svid prn cm_initial_state cl_initial_state cm_end_state cl_end_state')):
     """
-    (svid, prn, cm_initial_state, cl_initial_state, cm_end_state, cl_end_state)
+    (svid, prn, cm_initia~l_state, cl_initial_state, cm_end_state, cl_end_state)
     Tuple struct to store data from Tabel 3-II of the IS-GPS 200 
     specification, which contains shift register state information for L2
     signals.
@@ -66,8 +67,9 @@ def shift_state(state):
     and the polynomial followed by a right shift. The MSb comes from the last bit of the current state.
     """
     poly = 153692793
-    next_state = ((state ^ poly) >> 1)
-    next_state = next_state | (1 << 27) if (state & 1) else next_state
+#     next_state = ((state ^ poly) >> 1)
+#     next_state = next_state | (1 << 27) if (state & 1) else next_state
+    next_state = ((state ^ poly) >> 1) | ((state & 1) << 27)
     return next_state
 
 def cm_code(initial_state):
@@ -75,19 +77,25 @@ def cm_code(initial_state):
     Generates the L2 CM code given the initial shift register state.
     """
     state = initial_state
-    code = np.zeros((CM_LENGTH,))
+    sequence = zeros((CM_LENGTH,))
     for i in range(CM_LENGTH):
         state = shift_state(state)
-        code[i] = state & 0x1
-    return code
+        sequence[i] = state & 0x1
+    return Code(sequence, 10230)
 
 def cl_code(initial_state):
     """
     Generates the L2 CL code given the initial shift register state.
     """
     state = initial_state
-    code = np.zeros((CL_LENGTH,))
+    sequence = zeros((CL_LENGTH,))
     for i in range(CL_LENGTH):
         state = shift_state(state)
-        code[i] = state & 0x1
-    return code
+        sequence[i] = state & 0x1
+    return Code(sequence, 10230)
+
+def gps_l2c(svid):
+    phase_assignment = L2_CODE_PHASE_ASSIGNMENTS[svid]
+    cm = cm_code(phase_assignment.cm_initial_state)
+    cl = cl_code(phase_assignment.cl_initial_state)
+    return Code.time_multiplex(cm, cl, cl.rate)

@@ -1,8 +1,6 @@
 
 from fractions import gcd
-from numpy import arange, floor
-
-b = arange(1, 3)
+from numpy import arange, floor, vstack
 
 class Code:
     
@@ -20,8 +18,8 @@ class Code:
         rate = code_1.rate
         new_rate = rate * 2
         t = arange(0., new_length / new_rate, 1. / rate)
-        sequence_1 = code_1.sequence[floor(t * rate) % len(code_1.sequence)]
-        sequence_2 = code_2.sequence[floor(t * rate) % len(code_2.sequence)]
+        sequence_1 = code_1.sequence[(floor(t * rate) % len(code_1.sequence)).astype(int)]
+        sequence_2 = code_2.sequence[(floor(t * rate) % len(code_2.sequence)).astype(int)]
         # the following concatenates the arrays along their unit-dimensions (say, puts them into two rows)
         # then reshapes them so they interleave into one long vector.
         new_sequence = vstack((sequence_1, sequence_2)).reshape((-1,), order='F')
