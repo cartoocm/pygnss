@@ -58,3 +58,7 @@ data/
 
 # scratch work
 scratch/
+
+# notebook checkpoints
+.ipynb_checkpoints/
+*checkpoint.ipynb
