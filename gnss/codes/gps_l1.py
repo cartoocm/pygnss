@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-from gnss.codes import Code
+from gnss.codes.code import Code
 
 
 class L1CodePhaseAssignment(namedtuple('L1CodePhaseAssignment', 'svid prn ca_phase_select x2_phase_select ca_code_delay p_code_delay first_10_chips_ca first_12_chips_p')):

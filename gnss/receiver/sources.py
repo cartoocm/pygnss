@@ -3,7 +3,7 @@
 
 from os.path import getsize
 from os import SEEK_SET
-from numpy import zeros, byte, fromfile
+from numpy import zeros, byte, fromfile, uint8, int8, bitwise_and
 
 
 class SignalSource:
@@ -82,10 +82,12 @@ class FileSignalSource(SignalSource):
             elif not self.real and self.bit_depth == 4:
                 temp = fromfile(f, dtype=byte, count=int(self.buffer_size - overlap))
                 # typically real is upper nibble, complex is lower nibble, but TODO make this generic
-                real = temp & 0x0F
-                imag = temp & 0xF0 >> 4
-                real[real & 0b1000] -= 2**4
-                imag[imag & 0b1000] -= 2**4
+#                 real = (temp & 0x0F).astype(int8)
+#                 imag = ((temp & 0xF0) >> 4).astype(int8)
+#                 real[real & 0b1000 > 0] -= 2**4
+#                 imag[imag & 0b1000 > 0] -= 2**4
+                real = (bitwise_and(temp, 0x0f) << 4).astype(int8) >> 4
+                imag = bitwise_and(temp, 0xf0).astype(int8) >> 4
                 self.buffer[:] = real + 1j * imag
             
     def advance(self, overlap=100000):

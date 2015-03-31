@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 from numpy import zeros
-from gnss.codes import Code
+from gnss.codes.code import Code
 
 
 class L2CodePhaseAssignment(namedtuple('L2CodePhaseAssignment', 'svid prn cm_initial_state cl_initial_state cm_end_state cl_end_state')):
@@ -66,13 +66,15 @@ def shift_state(state):
     Applying the shift register polynomial involves an xor operation of the current state
     and the polynomial followed by a right shift. The MSb comes from the last bit of the current state.
     """
-    poly = 153692793
+    poly = 19475065
 #     next_state = ((state ^ poly) >> 1)
 #     next_state = next_state | (1 << 27) if (state & 1) else next_state
-    next_state = ((state ^ poly) >> 1) | ((state & 1) << 27)
+
+#     next_state = ((state ^ poly) >> 1) | ((state & 1) << 27)
+    next_state = ((((state & 1) * poly) ^ state) >> 1) | ((state & 1) << 26)
     return next_state
 
-def cm_code(initial_state):
+def gps_l2_cm(initial_state):
     """
     Generates the L2 CM code given the initial shift register state.
     """
@@ -81,9 +83,9 @@ def cm_code(initial_state):
     for i in range(CM_LENGTH):
         state = shift_state(state)
         sequence[i] = state & 0x1
-    return Code(sequence, 10230)
+    return Code(sequence, 511500)
 
-def cl_code(initial_state):
+def gps_l2_cl(initial_state):
     """
     Generates the L2 CL code given the initial shift register state.
     """
@@ -92,10 +94,10 @@ def cl_code(initial_state):
     for i in range(CL_LENGTH):
         state = shift_state(state)
         sequence[i] = state & 0x1
-    return Code(sequence, 10230)
+    return Code(sequence, 511500)
 
 def gps_l2c(svid):
     phase_assignment = L2_CODE_PHASE_ASSIGNMENTS[svid]
-    cm = cm_code(phase_assignment.cm_initial_state)
-    cl = cl_code(phase_assignment.cl_initial_state)
-    return Code.time_multiplex(cm, cl, cl.rate)
+    cm = gps_l2_cm(phase_assignment.cm_initial_state)
+    cl = gps_l2_cl(phase_assignment.cl_initial_state)
+    return Code.time_multiplex(cm, cl)

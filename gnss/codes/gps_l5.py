@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-
+from gnss.codes.code import Code
 
 class L5CodePhaseAssignment(namedtuple('L5CodePhaseAssignment', 'svid prn xb_advance_i xb_advance_q xb_initial_state_i xb_initial_state_q')):
     """
@@ -107,4 +107,5 @@ def gps_l5_q(svid):
     xb = x_code(l5_code_phase_assignments[svid].initial_state_q, 12763)  # initial state depends on svid, poly is 13825
     sequence = (xa[indices % len(xa)] + xb[indices % len(xb)]) % 2
     # TODO combine with Neuman-Hofman code
+    neuman_hofman = Code([0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0])
     return Code(sequence, L5_CODE_RATE)

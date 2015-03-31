@@ -12,6 +12,7 @@ class TrackingOutputBuffer:
         self.indices = {}
         for key in outputs:
             self.buffers[key] = numpy.zeros((outputs[key]['size'],), dtype=outputs[key]['dtype'])
+            self.buffers[key][:] = numpy.nan
             self.indices[key] = 0
     
     def push(self, **outputs):
