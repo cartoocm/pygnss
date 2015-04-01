@@ -24,6 +24,8 @@ class FineAcquirer:
         # TODO come up with a better way to pass these parameters
         # doppler adjusted chipping rate
         f_chip = signal.code.rate * (1 + f_dopp / signal.f_carrier)
+        # intermediate frequency for signal
+        f_inter = signal.f_carrier - self.source.f_center
         # get signal samples and correct for quantization
         samples, self.time = self.source.get(self.num_samples, time)
         # correct for any time quantization
@@ -32,7 +34,7 @@ class FineAcquirer:
         indices = (numpy.floor(chip + self.t * f_chip) % len(signal.code.sequence)).astype(int)
         code_samples = 1. - 2. * signal.code.sequence[indices]
         # generate reference and clean signal
-        conjugate_reference = code_samples * numpy.exp(-2j * numpy.pi * (self.source.f_center + f_dopp) * self.t)
+        conjugate_reference = code_samples * numpy.exp(-2j * numpy.pi * (f_inter + f_dopp) * self.t)
         clean_signal = conjugate_reference * samples
         # sum and store phases
         for i in range(self.num_blocks):

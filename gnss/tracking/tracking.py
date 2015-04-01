@@ -17,12 +17,13 @@ class Correlator:
         samples, time = source.get(block_size, time)
         # TODO handle changes in time
         t = numpy.arange(block_size) / source.f_samp
-        carrierless = samples * numpy.exp(-2j * numpy.pi * (source.f_center + f_dopp) * t - 1j * theta)
+        f_inter = signal.f_carrier - source.f_center
+        carrierless = samples * numpy.exp(-2j * numpy.pi * (f_inter + f_dopp) * t - 1j * theta)
         codeless = samples * code_samples(signal, f_dopp, t, chip)
         chip_delay_outputs = (numpy.sum(carrierless * code_samples(signal, f_dopp, t, chip + delay)) \
                               for delay in self.chip_delays)
         doppler_offset_outputs = (np.sum(codeless \
-                    * numpy.exp(-2j * numpy.pi * (source.f_center + f_dopp + dopp_offset) * t - 1j * theta)) \
+                    * numpy.exp(-2j * numpy.pi * (f_inter + f_dopp + dopp_offset) * t - 1j * theta)) \
                     for dopp_offset in self.doppler_offsets)
         return chip_delay_outputs, doppler_offset_outputs
     

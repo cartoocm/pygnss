@@ -28,8 +28,9 @@ class CoarseAcquirer:
         fft_blocks = numpy.fft.fft(samples[:self.num_samples].reshape((self.num_blocks, self.num_block_samples)), axis=1)
         indices = (numpy.floor(self.t * signal.code.rate) % len(signal.code.sequence)).astype(int)
         code_samples = 1. - 2. * signal.code.sequence[indices]
+        f_inter = signal.f_carrier - self.source.f_center
         for i, f_dopp in enumerate(self.dopp_bins):
-            reference = code_samples * numpy.exp(2j * numpy.pi * (self.source.f_center + f_dopp) * self.t)
+            reference = code_samples * numpy.exp(2j * numpy.pi * (f_inter + f_dopp) * self.t)
             conjugate_fft = numpy.conj(numpy.fft.fft(reference))
             self.correlation[i, :] = numpy.sum(numpy.fft.ifft(conjugate_fft * fft_blocks), axis=0) / self.num_blocks
         # perform search
