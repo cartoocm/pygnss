@@ -1,6 +1,6 @@
 
 
-import numpy as np
+from numpy import arange, zeros
 from collections import namedtuple
 from gnss.codes.code import Code
 
@@ -16,6 +16,7 @@ class L5CodePhaseAssignment(namedtuple('L5CodePhaseAssignment', 'svid prn xb_adv
     
     """
     pass
+
 L5_CODE_PHASE_ASSIGNMENTS = {
     1 : L5CodePhaseAssignment(1, 1, 266, 1701, 0b0101011100100, 0b1001011001100),
     2 : L5CodePhaseAssignment(2, 2, 365, 323, 0b1100000110101, 0b0100011110110),
@@ -55,57 +56,72 @@ L5_CODE_PHASE_ASSIGNMENTS = {
     68 : L5CodePhaseAssignment(68, 36, 7777, 3210, 0b1001011001000, 0b0011110101111),
     69 : L5CodePhaseAssignment(69, 37, 8057, 708, 0b0011010010000, 0b0010011010001),}
 
-
 XA_LENGTH = 8190
 XB_LENGTH = 8191
 L5_CODE_LENGTH = 10230
 L5_CODE_RATE = 10230e3
+NEUMAN_HOFFMAN_RATE = 1000
 
-def shift_state(state):
+def xa_code():
     """
-    Applying the shift register polynomial involves an xor operation of the current state
-    and the polynomial followed by a right shift. The MSb comes from the last bit of the current state.
-    """
-    poly = 153692793
-    next_state = ((state ^ poly) >> 1) | ((state & 1) << 27)
-    return next_state
-
-def x_code(initial_state, polynomial):
-    """
-    Generates the X code used in generating the GPS L5 codes.
+    Generates the XA codes used in generating the GPS L5 codes.
     `state` represents the state of a 13-bit shift register.
-    The initial state for the XA sequence is defined as all 1s.
-    The initial state for the XB sequences depends on the SVID.
-    The binary polynomial for XA sequence is 13825.
-    The binary polynomial for XB sequences is 12763.
+    Shift amounts should be one less than the degree of the polynomial
+    (since bit indexing starts at 1).
+    Taps: 9, 10, 12, 13
     """
-    code = np.zeros((XA_LENGTH,))
+    code = zeros((XA_LENGTH,))
+    state = 0b1111111111111
     for i in range(XA_LENGTH):
-        code[i] = state & 0b1000000000000
-        shift_in = ((state >> 9) ^ (state >> 10) ^ (state >> 12) ^ (state >> 13)) & 1
+        code[i] = (state >> 12) & 1
+        shift_in = ((state >> 12) ^ (state >> 11) ^ (state >> 9) ^ (state >> 8)) & 1
         state = (state << 1) | shift_in
     return code
+
+def xb_code(initial_state):
+    """
+    Generates the XB codes used in generating the GPS L5 codes.
+    `state` represents the state of a 13-bit shift register.
+    Shift amounts should be one less than the degree of the polynomial
+    (since bit indexing starts at 1).
+    Taps: 1, 3, 4, 6, 7, 8, 12, 13
+    """
+    code = zeros((XB_LENGTH,))
+    state = initial_state
+    for i in range(XB_LENGTH):
+        code[i] = (state >> 12) & 1
+        shift_in = ((state >> 12) ^ (state >> 11) ^ (state >> 7) ^ (state >> 6)
+                    ^ (state >> 5) ^ (state >> 3) ^ (state >> 2) ^ (state >> 0)) & 1
+        state = (state << 1) | shift_in
+    return code
+
+def gps_l5(xb_initial_state, neuman_hoffman):
+    """
+    Generates the GPS L5 code (either I or Q) given the initial state
+    of the XB shift register and the neuman_hoffman overlay code.
+    """
+    indices = arange(L5_CODE_LENGTH)
+    xa = xa_code()  # initial state is all ones, poly is 13825 >> 1
+    xb = xb_code(xb_initial_state)  # initial state depends on svid
+    sequence = (xa[(1 + indices) % XA_LENGTH] + xb[(indices) % XB_LENGTH]) % 2
+    nh = Code(neuman_hoffman, NEUMAN_HOFFMAN_RATE)
+    i_code = Code(sequence, L5_CODE_RATE)
+    return Code.combine(i_code, nh, 10 * L5_CODE_LENGTH, L5_CODE_RATE)
 
 def gps_l5_i(svid):
     """
     Generates the in-phase code for GPS signal L5 given the SVID of
     the desired code.
     """
-    indices = np.arange(L5_CODE_LENGTH)
-    xa = x_code(0b0001111111111111, 13825)  # initial state is all ones, poly is 13825
-    xb = x_code(l5_code_phase_assignments[svid].initial_state_i, 12763)  # initial state depends on svid, poly is 13825
-    sequence = (xa[indices % len(xa)] + xb[indices % len(xb)]) % 2
-    return Code(sequence, L5_CODE_RATE)
+    xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_i
+    neuman_hoffman = [0, 0, 0, 0, 1, 1, 0, 1, 0, 1]
+    return gps_l5(xb_initial_state, neuman_hoffman)
 
 def gps_l5_q(svid):
     """
     Generates the in-phase code for GPS signal L5 given the SVID of
     the desired code.
     """
-    indices = np.arange(L5_CODE_LENGTH)
-    xa = x_code(0b0001111111111111, 13825)  # initial state is all ones, poly is 13825
-    xb = x_code(l5_code_phase_assignments[svid].initial_state_q, 12763)  # initial state depends on svid, poly is 13825
-    sequence = (xa[indices % len(xa)] + xb[indices % len(xb)]) % 2
-    # TODO combine with Neuman-Hofman code
-    neuman_hofman = Code([0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0])
-    return Code(sequence, L5_CODE_RATE)
+    xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_q
+    neuman_hoffman = [0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0]
+    return gps_l5(xb_initial_state, neuman_hoffman)

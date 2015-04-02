@@ -1,6 +1,6 @@
 
 from fractions import gcd
-from numpy import arange, floor, vstack
+from numpy import arange, floor, vstack, asarray
 
 
 def lcm(a, b):
@@ -14,7 +14,7 @@ def lcm(a, b):
 class Code:
     
     def __init__(self, sequence, rate):
-        self.sequence = sequence
+        self.sequence = asarray(sequence)
         self.rate = rate
     
     def time_multiplex(code_1, code_2):

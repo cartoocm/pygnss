@@ -8,7 +8,7 @@ class CoarseAcquirer:
     def __init__(self, source, block_length, num_blocks, dopp_bins=None, dopp_min=-5000, dopp_max=5000):
         self.block_length = block_length
         self.num_blocks = num_blocks   
-        if not dopp_bins:
+        if dopp_bins is None:
             self.dopp_bins = numpy.arange(dopp_min, dopp_max, 1. / block_length)
         else:
             self.dopp_bins = dopp_bins
