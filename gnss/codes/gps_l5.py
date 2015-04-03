@@ -59,7 +59,7 @@ L5_CODE_PHASE_ASSIGNMENTS = {
 XA_LENGTH = 8190
 XB_LENGTH = 8191
 L5_CODE_LENGTH = 10230
-L5_CODE_RATE = 10230e3
+L5_CODE_RATE = 10230000
 NEUMAN_HOFFMAN_RATE = 1000
 
 def xa_code():
@@ -78,7 +78,7 @@ def xa_code():
         state = (state << 1) | shift_in
     return code
 
-def xb_code(initial_state):
+def xb_code():
     """
     Generates the XB codes used in generating the GPS L5 codes.
     `state` represents the state of a 13-bit shift register.
@@ -87,7 +87,7 @@ def xb_code(initial_state):
     Taps: 1, 3, 4, 6, 7, 8, 12, 13
     """
     code = zeros((XB_LENGTH,))
-    state = initial_state
+    state = 0b1111111111111
     for i in range(XB_LENGTH):
         code[i] = (state >> 12) & 1
         shift_in = ((state >> 12) ^ (state >> 11) ^ (state >> 7) ^ (state >> 6)
@@ -95,33 +95,41 @@ def xb_code(initial_state):
         state = (state << 1) | shift_in
     return code
 
-def gps_l5(xb_initial_state, neuman_hoffman):
+def gps_l5(xb_advance, neuman_hoffman):
     """
     Generates the GPS L5 code (either I or Q) given the initial state
     of the XB shift register and the neuman_hoffman overlay code.
     """
     indices = arange(L5_CODE_LENGTH)
-    xa = xa_code()  # initial state is all ones, poly is 13825 >> 1
-    xb = xb_code(xb_initial_state)  # initial state depends on svid
-    sequence = (xa[(1 + indices) % XA_LENGTH] + xb[(indices) % XB_LENGTH]) % 2
+    xa = xa_code()
+    xb = xb_code()
+    sequence = (xa[indices % XA_LENGTH] + xb[(xb_advance + indices) % XB_LENGTH]) % 2  # <- initial state used in index
     nh = Code(neuman_hoffman, NEUMAN_HOFFMAN_RATE)
-    i_code = Code(sequence, L5_CODE_RATE)
-    return Code.combine(i_code, nh, 10 * L5_CODE_LENGTH, L5_CODE_RATE)
+    code = Code(sequence, L5_CODE_RATE)
+    new_length = L5_CODE_LENGTH * len(nh.sequence)
+    return Code.overlay(code, nh)
+#     return Code.combine(code, nh, new_length, L5_CODE_RATE)
+#     return code
 
 def gps_l5_i(svid):
     """
     Generates the in-phase code for GPS signal L5 given the SVID of
     the desired code.
     """
-    xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_i
+#     xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_i
+    xb_advance_i = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_advance_i
     neuman_hoffman = [0, 0, 0, 0, 1, 1, 0, 1, 0, 1]
-    return gps_l5(xb_initial_state, neuman_hoffman)
+#     neuman_hoffman = [1, 1, 1, 1, 0, 0, 1, 0, 1, 0]
+#     neuman_hoffman = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    return gps_l5(xb_advance_i, neuman_hoffman)
 
 def gps_l5_q(svid):
     """
     Generates the in-phase code for GPS signal L5 given the SVID of
     the desired code.
     """
-    xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_q
+#     xb_initial_state = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_initial_state_q
+    xb_advance_q = L5_CODE_PHASE_ASSIGNMENTS[svid].xb_advance_q
     neuman_hoffman = [0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0]
-    return gps_l5(xb_initial_state, neuman_hoffman)
+#     neuman_hoffman = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    return gps_l5(xb_advance_q, neuman_hoffman)
